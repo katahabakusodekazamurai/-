@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>楽譜A録音ページ</title>
+    <style>
+        /* 基本スタイル */
+        body {
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            font-style: italic;
+            margin: 0;
+            padding: 0;
+            background-color: #4682b4; /* 濃いめの水色 */
+            color: white; /* 白色のテキスト */
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: white; /* 白色のタイトル */
+            margin: 20px 0;
+        }
+
+        p {
+            font-size: 1.2rem;
+            margin: 10px 20px;
+        }
+
+        /* カウントダウン用のスタイル */
+        #countdown {
+            font-size: 2.5rem;
+            font-weight: bold;
+            font-style: italic;
+            color: white; /* 白色のカウントダウン */
+            margin: 20px auto;
+        }
+
+        /* 録音中のメッセージ */
+        #recording-status {
+            display: none;
+            font-size: 1.5rem;
+            color: white;
+            background-color: red;
+            padding: 10px;
+            margin: 20px auto;
+            border-radius: 5px;
+        }
+
+        /* ボタンのスタイル */
+        button {
+            background-color: #d32f2f; /* 赤 */
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            margin: 10px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #b71c1c; /* 少し暗い赤 */
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* 保存ボタンのスタイル */
+        #save-btn {
+            display: block; /* 保存ボタンをブロック要素にして、中央配置 */
+            margin: 20px auto; /* 左右中央に配置 */
+            background-color: #d32f2f; /* 赤 */
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        #save-btn:hover {
+            background-color: #b71c1c; /* 少し暗い赤 */
+        }
+
+        /* Googleフォームへのリンク */
+        #google-form-link a {
+            display: inline-block;
+            background-color: #d32f2f; /* 赤 */
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 20px;
+            cursor: pointer;
+        }
+
+        #google-form-link a:hover {
+            background-color: #b71c1c; /* 少し暗い赤 */
+        }
+
+        /* 音源再生バー */
+        #audio-playback {
+            margin: 20px auto;
+            width: 90%;
+        }
+
+        /* ダウンロード完了メッセージ */
+        #download-complete {
+            display: none;
+            font-size: 1.2rem;
+            color: lightgreen;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            button {
+                font-size: 1rem;
+                padding: 12px 24px;
+            }
+
+            p {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>楽譜A - 録音ページ</h1>
+    <p>「日に日にあらたに」を録音してください。</p>
+
+    <!-- カウントダウン表示エリア -->
+    <div id="countdown">4</div>
+
+    <!-- 録音中のメッセージ -->
+    <div id="recording-status">録音中...</div>
+
+    <!-- 音源ファイル -->
+    <audio id="intro-audio">
+        <source src="A.mp3" type="audio/mpeg">
+        お使いのブラウザはオーディオ要素をサポートしていません。
+    </audio>
+
+    <!-- 開始ボタン（録音開始/やり直し） -->
+    <button id="start-btn">録音開始</button>
+
+    <!-- 録音停止ボタン -->
+    <button id="stop-btn" disabled>録音停止</button>
+
+    <!-- 録音内容再生用のオーディオ -->
+    <audio id="audio-playback" controls></audio>
+
+    <!-- 保存ボタンと説明文 -->
+    <div id="save-container">
+        <p id="save-instructions" style="display:none;">録音物を保存してください:</p>
+        <button id="save-btn" style="display:none;">保存</button>
+    </div>
+
+    <!-- ダウンロード完了メッセージ -->
+    <p id="download-complete" style="display:none;">ダウンロードが完了しました！</p>
+
+    <!-- Googleフォームへのリンク -->
+    <div id="google-form-link" style="display:none;">
+        <p>フォームにご記入ください:</p>
+        <a href="https://forms.gle/bgwVcy3Mfxcm8Cz66" target="_blank">Googleフォームを開く</a>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        const countdownElement = document.getElementById('countdown');
+        const introAudio = document.getElementById('intro-audio');
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const audioPlayback = document.getElementById('audio-playback');
+        const recordingStatus = document.getElementById('recording-status');
+        const saveBtn = document.getElementById('save-btn');
+        const saveInstructions = document.getElementById('save-instructions');
+        const downloadComplete = document.getElementById('download-complete');
+        const googleFormLink = document.getElementById('google-form-link');
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/mpeg' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audioPlayback.src = audioUrl;
+
+                    // 保存ボタンと説明文を表示
+                    saveBtn.style.display = 'block';
+                    saveInstructions.style.display = 'block';
+
+                    // 保存ボタンのクリック処理
+                    saveBtn.addEventListener('click', () => {
+                        const a = document.createElement('a');
+                        a.href = audioUrl;
+                        a.download = 'recording.mp3';
+                        a.click();
+
+                        // ダウンロード完了メッセージとフォームリンクを表示
+                        downloadComplete.style.display = 'block';
+                        googleFormLink.style.display = 'block';
+                        console.log("録音物を保存しました。");
+                    });
+                };
+
+                mediaRecorder.start();
+                console.log("録音開始");
+
+                recordingStatus.style.display = 'block';
+                stopBtn.disabled = false;
+            } catch (err) {
+                console.error("マイクへのアクセスに失敗しました:", err);
+                alert("マイクのアクセスを許可してください。");
+            }
+        }
+
+        function startCountdown() {
+            let countdown = 4;
+            countdownElement.style.display = 'block';
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                countdownElement.textContent = countdown;
+                if (countdown === 0) {
+                    clearInterval(countdownInterval);
+                    countdownElement.style.display = 'none';
+                    introAudio.play();
+                }
+            }, 1000);
+        }
+
+        startBtn.addEventListener('click', () => {
+            console.log("カウントダウン開始");
+            startBtn.disabled = true;
+            startCountdown();
+        });
+
+        introAudio.addEventListener('ended', () => {
+            console.log("イントロ音源再生完了。録音を開始します...");
+            startRecording();
+        });
+
+        stopBtn.addEventListener('click', () => {
+            mediaRecorder.stop();
+            console.log("録音停止");
+
+            recordingStatus.style.display = 'none';
+            stopBtn.disabled = true;
+            startBtn.disabled = false;
+            startBtn.textContent = 'もう一度録音する';
+        });
+    </script>
+</body>
+</html>
